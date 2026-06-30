@@ -65,7 +65,7 @@ The server starts on **http://localhost:3000**.
 | `npm start` | Start the server |
 | `npm run dev` | Start with auto-restart on file changes |
 | `npm run seed` | Wipe the database and re-seed with example data |
-| `npm test` | Run **all** suites (unit + api + integration) |
+| `npm test` | Run **all** suites (unit + api + integration + e2e) |
 | `npm run test:unit` | Unit tests (`tests/unit/`) |
 | `npm run test:unit:watch` | Unit tests in watch mode |
 | `npm run test:unit:coverage` | Unit coverage → `coverage/` |
@@ -75,6 +75,9 @@ The server starts on **http://localhost:3000**.
 | `npm run test:integration` | Integration tests (`tests/integration/`) |
 | `npm run test:integration:watch` | Integration tests in watch mode |
 | `npm run test:integration:coverage` | Integration coverage → `coverage-integration/` |
+| `npm run test:e2e` | E2E tests (`tests/e2e/`) — starts server, seeds DB, runs Playwright |
+| `npm run test:e2e:ui` | E2E tests in Playwright UI mode (interactive debugging) |
+| `npm run test:e2e:ci` | E2E tests for CI (JUnit report → `test-results/junit-e2e.xml`) |
 | `npm run test:coverage` | All coverage reports |
 
 > Run `npm run seed` before each testing session to reset the database to a known, clean state.
@@ -174,6 +177,9 @@ Full request/response documentation is available in the Swagger UI.
 │   │   └── loan-fee-api.spec.js
 │   ├── integration/
 │   │   └── return-fee-freeze.spec.js
+│   ├── e2e/
+│   │   ├── smoke.spec.js
+│   │   └── loans-and-fees.spec.js
 │   ├── fixtures/
 │   │   └── loans.js
 │   └── helpers/
@@ -188,6 +194,7 @@ Full request/response documentation is available in the Swagger UI.
 ├── vitest.config.js
 ├── vitest.api.config.js
 ├── vitest.integration.config.js
+├── playwright.config.js
 └── package.json
 ```
 
@@ -238,13 +245,38 @@ Coverage → `coverage-integration/`.
 Reusable seed helpers (e.g. `fixtures/loans.js` — insert book, member, loan rows).
 Used by both API and integration specs via `tests/helpers/testApp.cjs`.
 
-CI: three workflows upload JUnit + Cobertura XML — `unit-tests.yaml`, `api-tests.yaml`, `integration-tests.yaml`.
+### E2E tests (`tests/e2e/`)
+
+Full browser tests via **Playwright**. Unlike unit/API/integration tests, E2E runs against a **real HTTP server** with a **file-based SQLite database** (`library.db`):
+
+1. `playwright.config.js` starts the web server (`npm run seed && npm start`)
+2. Seed wipes and repopulates `library.db` with the standard demo data
+3. Playwright drives Chromium through the web UI at `http://localhost:3000`
+
+**Playwright vs supertest (Vitest):**
+
+| | supertest (API/integration) | Playwright (E2E) |
+|---|---|---|
+| **Scope** | HTTP requests to Express app in-process | Real browser + running server |
+| **Database** | In-memory SQLite (`NODE_ENV=test`) | File-based `library.db` (seeded) |
+| **What it verifies** | API status codes, JSON bodies, DB state | UI rendering, navigation, user flows |
+| **Speed** | Fast (milliseconds per test) | Slower (browser startup, DOM interaction) |
+| **Best for** | Contract tests, business logic via API | Smoke tests, critical user journeys |
 
 ```bash
-npm test                      # unit + api + integration
+npm run test:e2e              # headless Chromium
+npm run test:e2e:ui           # interactive Playwright UI
+npx playwright install chromium   # first-time browser install
+```
+
+CI: four workflows upload JUnit (+ Cobertura where applicable) — `unit-tests.yaml`, `api-tests.yaml`, `integration-tests.yaml`, `e2e-tests.yaml`.
+
+```bash
+npm test                      # unit + api + integration + e2e
 npm run test:unit
 npm run test:api
 npm run test:integration
+npm run test:e2e
 npm run test:coverage         # all three coverage folders
 ```
 
@@ -302,3 +334,24 @@ Coverage target: **100%** of `src/fees.js` (see `vitest.config.js`).
 | 2 | returns 409 when the loan was already returned | **Negative:** double return → 409. |
 | 3 | returns 404 when returning a missing loan | **Negative:** unknown loan return → 404. |
 | 4 | creates a loan with due date 14 days after borrow | `POST /api/loans` borrow flow + due date. |
+
+### E2E test catalogue (`tests/e2e/`)
+
+#### `smoke.spec.js`
+
+| # | Test name | What it verifies |
+|---|-----------|------------------|
+| 1 | loads homepage with books tab active | Default route shows books list and active nav tab. |
+| 2 | navigates between main tabs | Loans, Reports, and Info tabs render expected headings. |
+| 3 | links to Swagger API docs | Header link points to `/api-docs`. |
+
+#### `loans-and-fees.spec.js`
+
+| # | Test name | What it verifies |
+|---|-----------|------------------|
+| 1 | displays seeded loans in the table | Loans tab shows rows from seed data. |
+| 2 | shows accrued fee on overdue loan detail | Clicking an overdue loan shows live accrued fee. |
+| 3 | returns an active on-time loan from detail view | Return Book button completes return with fee message. |
+| 4 | borrows a book via the loans form | Borrow form creates a loan for available book + active member. |
+| 5 | loads overdue loans with accrued fees | Reports → Load Overdue shows table with fees. |
+| 6 | navigates from overdue report row to loan detail | Clicking overdue row opens loan detail with accrued fee. |

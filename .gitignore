@@ -5,3 +5,6 @@ coverage/
 coverage-api/
 coverage-integration/
 test-results/
+playwright-report/
+playwright/.cache/
+.DS_Store

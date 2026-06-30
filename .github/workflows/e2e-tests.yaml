@@ -1,0 +1,43 @@
+name: E2E Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  e2e-tests:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e:ci
+        env:
+          CI: true
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-reports
+          path: |
+            test-results/junit-e2e.xml
+            playwright-report/
+          retention-days: 14
