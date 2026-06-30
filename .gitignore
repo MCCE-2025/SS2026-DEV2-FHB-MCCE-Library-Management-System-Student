@@ -2,4 +2,6 @@ node_modules/
 library.db
 .claude/
 coverage/
+coverage-api/
+coverage-integration/
 test-results/
