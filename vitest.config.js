@@ -8,7 +8,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/fees.js'],
-      reporter: ['text', 'text-summary', 'html'],
+      reporter: ['text', 'text-summary', 'html', 'cobertura'],
+      reportsDirectory: './coverage',
       thresholds: {
         lines: 100,
         functions: 100,
