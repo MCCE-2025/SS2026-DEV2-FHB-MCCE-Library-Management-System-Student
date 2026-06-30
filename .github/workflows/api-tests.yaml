@@ -1,4 +1,4 @@
-name: Unit Tests
+name: API Tests
 
 on:
   pull_request:
@@ -7,8 +7,8 @@ on:
       - master
 
 jobs:
-  unit-tests:
-    name: Unit tests (Vitest)
+  api-tests:
+    name: API tests (Vitest + supertest)
     runs-on: ubuntu-latest
 
     steps:
@@ -18,21 +18,21 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests with coverage
-        run: npm run test:unit:ci
+      - name: Run API tests with coverage
+        run: npm run test:api:ci
 
       - name: Upload test and coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-reports
+          name: api-test-reports
           path: |
-            test-results/junit-unit.xml
-            coverage/cobertura-coverage.xml
+            test-results/junit-api.xml
+            coverage-api/cobertura-coverage.xml
           retention-days: 14
